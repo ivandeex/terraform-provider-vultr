@@ -1,0 +1,20 @@
+env:
+- GO111MODULE=on
+builds:
+- id: build
+  goos:
+  - linux
+  goarch:
+  - amd64
+archives:
+- id: default
+  builds:
+  - build
+  name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+  format: zip
+  files:
+  - none*
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  name_template: "{{ .Tag }}-next"
