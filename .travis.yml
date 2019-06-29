@@ -21,9 +21,20 @@ matrix:
       script:
         - make build
         - make test
+# goreleaser does not have a flag to overwrite github release artifacts
+# use the travis releases provider to do rolling releases
+before_deploy:
+  - make dist
 deploy:
-  provider: script
-  script: make release
+  provider: releases
+  api_key: $GITHUB_TOKEN
+  file_glob: true
+  file:
+    - dist/*.txt
+    - dist/*.tar.gz
+    - dist/*.zip
+  skip_cleanup: true
+  overwrite: true
   on:
     repo: ivandeex/terraform-provider-vultr
     tags: true
