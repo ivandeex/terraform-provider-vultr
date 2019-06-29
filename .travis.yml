@@ -21,3 +21,12 @@ matrix:
       script:
         - make build
         - make test
+deploy:
+  provider: script
+  script: make release
+  on:
+    repo: ivandeex/terraform-provider-vultr
+    tags: true
+    all_branches: true
+    go: 1.12.x
+    condition: $TRAVIS_PULL_REQUEST == false

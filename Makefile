@@ -1,63 +1,21 @@
-.PHONY: all-release build clean fmt fmt-go fmt-terraform lint lint-ci lint-go lint-terraform release setup-tools test vendor vendor-status vet
+.PHONY: build clean dist fmt fmt-go fmt-terraform lint lint-ci lint-go lint-terraform lint-ci release setup-tools test vendor vendor-status vet
 
-ARCH ?= amd64
-PLATFORM ?= linux
-ALL_PLATFORMS := darwin linux windows
-BIN := terraform-provider-vultr
-PKG := github.com/squat/$(BIN)
-BUILD_IMAGE ?= golang:1.10.0-alpine
 # `go list ./...` takes too long in the module mode, let's use `find` instead.
 TEST ?= $$(find . -name '*.go' | grep -v ./vendor | xargs -L1 dirname | sort -u)
 GOFMT_FILES ?= $$(find . -name '*.go' | grep -v ./vendor)
-SRC := $(shell find . -type f -name '*.go' -not -path "./vendor/*")
 TERRAFORMFMT_FILES ?= examples
 TESTARGS ?=
-TAG := $(shell git describe --abbrev=0 --tags HEAD 2>/dev/null)
-COMMIT := $(shell git rev-parse HEAD)
-VERSION := $(COMMIT)
-ifneq ($(TAG),)
-    ifeq ($(COMMIT), $(shell git rev-list -n1 $(TAG)))
-        VERSION := $(TAG)
-    endif
-endif
-DIRTY := $(shell test -z "$$(git diff --shortstat 2>/dev/null)" || echo -dirty)
-VERSION := $(VERSION)$(DIRTY)
 
 default: build
 
 build:
 	go install
 
-all-release: $(addprefix release-, $(ALL_PLATFORMS))
+dist:
+	goreleaser --rm-dist --skip-publish
 
-release-%:
-	@$(MAKE) --no-print-directory ARCH=$(ARCH) PLATFORM=$* release
-
-release: bin/$(BIN)_$(VERSION)_$(PLATFORM)_$(ARCH).tar.gz.asc
-
-bin/$(PLATFORM)/$(ARCH):
-	@mkdir -p bin/$(PLATFORM)/$(ARCH)
-
-bin/$(BIN)_$(VERSION)_$(PLATFORM)_$(ARCH).tar.gz.asc: bin/$(BIN)_$(VERSION)_$(PLATFORM)_$(ARCH).tar.gz
-	@cd bin && gpg --armor --detach-sign $(<F)
-
-bin/$(BIN)_$(VERSION)_$(PLATFORM)_$(ARCH).tar.gz: bin/$(PLATFORM)/$(ARCH)/$(BIN)_$(VERSION)
-	@tar -czf $@ -C $(<D) $(<F)
-
-bin/$(PLATFORM)/$(ARCH)/$(BIN)_$(VERSION): $(SRC) glide.yaml bin/$(PLATFORM)/$(ARCH)
-	@echo "building: $@"
-	@docker run --rm \
-	    -u $$(id -u):$$(id -g) \
-	    -v $$(pwd):/go/src/$(PKG) \
-	    -v $$(pwd)/bin/$(PLATFORM)/$(ARCH):/go/bin \
-	    -w /go/src/$(PKG) \
-	    $(BUILD_IMAGE) \
-	    /bin/sh -c " \
-	        GOARCH=$(ARCH) \
-	        GOOS=$(PLATFORM) \
-		CGO_ENABLED=0 \
-		go build -o /go/bin/$(BIN)_$(VERSION) \
-	    "
+release:
+	goreleaser --rm-dist
 
 fmt: fmt-go fmt-terraform
 
@@ -121,6 +79,7 @@ vet:
 		exit 1; \
 	fi
 
+GORELEASER_VER := 0.110.0
 GOLANGCI_LINT_VER := 1.17.1
 GOBIN := $(shell go env GOPATH)/bin
 
@@ -132,9 +91,10 @@ setup-tools:
 	GO111MODULE=off go get -u golang.org/x/tools/cmd/goimports
 	GO111MODULE=off go get -u github.com/hashicorp/terraform
 
-	# golangci-lint takes pretty long to build
+	# goreleaser and golangci-lint take pretty long to build
 	# as an optimization, let's just download the binaries
+	curl -sL "https://github.com/goreleaser/goreleaser/releases/download/v$(GORELEASER_VER)/goreleaser_Linux_x86_64.tar.gz" | tar -xzf - -C $(GOBIN) goreleaser
 	curl -sL "https://github.com/golangci/golangci-lint/releases/download/v$(GOLANGCI_LINT_VER)/golangci-lint-$(GOLANGCI_LINT_VER)-linux-amd64.tar.gz" | tar -xzf - -C $(GOBIN) --strip-components=1 "golangci-lint-$(GOLANGCI_LINT_VER)-linux-amd64/golangci-lint"
 
 clean:
-	@rm -rf bin ./terraform-provider-vultr
+	@rm -rf bin dist ./terraform-provider-vultr
