@@ -64,11 +64,8 @@ test: vet lint
 	go test $(TESTARGS) -timeout=30s -parallel=4 $(TEST)
 
 vendor:
-	@glide install -v
-	@glide-vc --only-code --no-tests
-
-vendor-status:
-	@glide list
+	GO111MODULE=on go mod tidy
+	GO111MODULE=on go mod vendor
 
 vet:
 	@echo 'go vet $(TEST)'
