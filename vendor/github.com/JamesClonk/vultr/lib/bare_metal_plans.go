@@ -14,9 +14,10 @@ type BareMetalPlan struct {
 	RAM        int    `json:"ram"`
 	Disk       string `json:"disk"`
 	Bandwidth  int    `json:"bandwidth_tb"`
-	Price      int    `json:"price_per_month"`
-	Regions    []int  `json:"available_locations"`
-	Type       string `json:"type"`
+	Price      int
+	PriceFloat float64 `json:"price_per_month"` // workaround for 999.99
+	Regions    []int   `json:"available_locations"`
+	Type       string  `json:"type"`
 }
 
 type bareMetalPlans []BareMetalPlan
@@ -62,6 +63,7 @@ func (c *Client) GetBareMetalPlans() ([]BareMetalPlan, error) {
 
 	var b bareMetalPlans
 	for _, bareMetalPlan := range bareMetalPlanMap {
+		bareMetalPlan.Price = int(bareMetalPlan.PriceFloat) // workaround for 999.99
 		b = append(b, bareMetalPlan)
 	}
 
