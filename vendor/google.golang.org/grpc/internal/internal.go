@@ -20,12 +20,11 @@
 // symbols to avoid circular dependencies.
 package internal
 
-import (
-	"context"
-	"time"
-)
+import "context"
 
 var (
+	// WithContextDialer is exported by dialoptions.go
+	WithContextDialer interface{} // func(context.Context, string) (net.Conn, error) grpc.DialOption
 	// WithResolverBuilder is exported by dialoptions.go
 	WithResolverBuilder interface{} // func (resolver.Builder) grpc.DialOption
 	// WithHealthCheckFunc is not exported by dialoptions.go
@@ -34,12 +33,6 @@ var (
 	HealthCheckFunc HealthChecker
 	// BalancerUnregister is exported by package balancer to unregister a balancer.
 	BalancerUnregister func(name string)
-	// KeepaliveMinPingTime is the minimum ping interval.  This must be 10s by
-	// default, but tests may wish to set it lower for convenience.
-	KeepaliveMinPingTime = 10 * time.Second
-	// ParseServiceConfig is a function to parse JSON service configs into
-	// opaque data structures.
-	ParseServiceConfig func(sc string) (interface{}, error)
 )
 
 // HealthChecker defines the signature of the client-side LB channel health checking function.

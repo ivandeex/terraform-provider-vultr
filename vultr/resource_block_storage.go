@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/terraform/helper/schema"
 )
@@ -54,6 +55,17 @@ func resourceBlockStorage() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
+
+			"delay": {
+				Type:     schema.TypeInt,
+				Optional: true,
+			},
+			// Delay in seconds before attaching.
+			// Some 20 seconds is more than enough for a small instance,
+			// but larger instances require a lot.
+			// A problem is that storage attachment restarts its instance,
+			// which may disrupt not yet finisehed startup script
+			// and leave operating system in an messed state!
 		},
 	}
 }
@@ -74,6 +86,10 @@ func resourceBlockStorageCreate(d *schema.ResourceData, meta interface{}) error 
 
 	instance := d.Get("instance")
 	if instance != "" {
+		delay := d.Get("delay").(int)
+		log.Printf("[INFO] Delay %dsec before attaching", delay)
+		time.Sleep(time.Duration(delay) * time.Second)
+
 		if err := client.AttachBlockStorage(d.Id(), instance.(string)); err != nil {
 			return fmt.Errorf("Error attaching newly created block storage (%s) to instance %q: %v", d.Id(), instance.(string), err)
 		}
@@ -133,10 +149,18 @@ func resourceBlockStorageUpdate(d *schema.ResourceData, meta interface{}) error 
 		if old != "" {
 			log.Printf("[INFO] Detaching block storage (%s)", d.Id())
 			if err := client.DetachBlockStorage(d.Id()); err != nil {
-				return fmt.Errorf("Error detaching block storage (%s): %v", d.Id(), err)
+				if new != "" {
+					log.Printf("[ERROR] Error detaching block storage (%s): %v", d.Id(), err)
+				} else {
+					return fmt.Errorf("Error detaching block storage (%s): %v", d.Id(), err)
+				}
 			}
 		}
 		if new != "" {
+			delay := d.Get("delay").(int)
+			log.Printf("[INFO] Delay %dsec before re-attaching", delay)
+			time.Sleep(time.Duration(delay) * time.Second)
+
 			log.Printf("[INFO] Attaching block storage (%s)", d.Id())
 			if err := client.AttachBlockStorage(d.Id(), new.(string)); err != nil {
 				return fmt.Errorf("Error attaching block storage (%s) to %q: %v", d.Id(), new.(string), err)

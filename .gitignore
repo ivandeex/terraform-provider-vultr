@@ -3,3 +3,5 @@ terraform.tfstate*
 terraform.tfvars
 assets
 bin
+dist
+/terraform-provider-vultr
